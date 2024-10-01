@@ -1,18 +1,12 @@
 package main
 
 import (
-	"encoding/json"
-	"fmt"
 	"github.com/labstack/echo/v4"
 	"math/rand"
 	"net/http"
 	"strconv"
+	"test-server/myapp/json-utils"
 )
-
-type User struct {
-	email    string
-	password string
-}
 
 type Todo struct {
 	Id     int    `json:"id"`
@@ -25,33 +19,21 @@ type ResponseMessage struct {
 	Status  string `json:"status"`
 }
 
-var mockUser = User{email: "test@test.com", password: "qwerty"}
-
-func jsonParse[T comparable](jsonBody T, c echo.Context) error {
-	err := json.NewDecoder(c.Request().Body).Decode(&jsonBody)
-	if err != nil {
-		fmt.Println(err)
-		return c.String(http.StatusBadRequest, "Error on JSON parsing")
-	}
-}
-
 func main() {
 	var todoList []Todo
 	e := echo.New()
 	e.GET("/todos", func(c echo.Context) error {
-		return c.JSON(http.StatusOK, json.NewEncoder(c.Response()).Encode(todoList))
+		return c.JSON(http.StatusOK, todoList)
 	})
 
 	e.POST("/todos", func(c echo.Context) error {
 		jsonBody := Todo{Id: rand.Intn(1000)}
-		err := json.NewDecoder(c.Request().Body).Decode(&jsonBody)
+		jsonBody, err := json_utils.Parse(jsonBody, c)
 		if err != nil {
-			fmt.Println(err)
-			return c.String(http.StatusBadRequest, "Error on JSON parsing")
+			return c.String(http.StatusBadRequest, err.Error())
 		}
 		todoList = append(todoList, jsonBody)
-		fmt.Println(todoList)
-		return c.JSON(http.StatusOK, json.NewEncoder(c.Response()).Encode(todoList))
+		return c.JSON(http.StatusOK, todoList)
 	})
 
 	e.DELETE("/todos/:id", func(c echo.Context) error {
@@ -73,12 +55,10 @@ func main() {
 
 		return c.JSON(
 			http.StatusOK,
-			json.NewEncoder(c.Response()).Encode(
-				ResponseMessage{
-					Message: "todo with id " + c.Param("id") + " deleted",
-					Status:  "success",
-				},
-			),
+			ResponseMessage{
+				Message: "todo with id " + c.Param("id") + " deleted",
+				Status:  "success",
+			},
 		)
 	})
 
@@ -89,10 +69,9 @@ func main() {
 		}
 
 		var jsonBody Todo
-		err = json.NewDecoder(c.Request().Body).Decode(&jsonBody)
+		jsonBody, err = json_utils.Parse(jsonBody, c)
 		if err != nil {
-			fmt.Println(err)
-			return c.String(http.StatusBadRequest, "Error on JSON parsing")
+			return c.String(http.StatusBadRequest, err.Error())
 		}
 
 		var indexOfUpdatedTodo int
@@ -112,7 +91,7 @@ func main() {
 			todoList[indexOfUpdatedTodo].Todo = jsonBody.Todo
 		}
 
-		return c.JSON(http.StatusOK, json.NewEncoder(c.Response()).Encode(todoList))
+		return c.JSON(http.StatusOK, todoList)
 	})
 	e.Logger.Fatal(e.Start(":1323"))
 }
