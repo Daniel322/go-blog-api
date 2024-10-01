@@ -27,6 +27,14 @@ type ResponseMessage struct {
 
 var mockUser = User{email: "test@test.com", password: "qwerty"}
 
+func jsonParse[T comparable](jsonBody T, c echo.Context) error {
+	err := json.NewDecoder(c.Request().Body).Decode(&jsonBody)
+	if err != nil {
+		fmt.Println(err)
+		return c.String(http.StatusBadRequest, "Error on JSON parsing")
+	}
+}
+
 func main() {
 	var todoList []Todo
 	e := echo.New()
