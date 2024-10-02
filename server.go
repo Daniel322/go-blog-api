@@ -5,6 +5,7 @@ import (
 	"math/rand"
 	"net/http"
 	"strconv"
+	"test-server/myapp/diff-utils"
 	"test-server/myapp/json-utils"
 )
 
@@ -42,16 +43,9 @@ func main() {
 			return c.String(http.StatusBadRequest, "Error on parsing")
 		}
 
-		var indexOfDeletedTodo int
+		currentTodo := diff_utils.FindInArr(todoList, "Id", idParam)
 
-		for i := 0; i < len(todoList); i++ {
-			if todoList[i].Id == idParam {
-				indexOfDeletedTodo = i
-				break
-			}
-		}
-
-		todoList = append(todoList[:indexOfDeletedTodo], todoList[indexOfDeletedTodo+1:]...)
+		todoList = append(todoList[:currentTodo.Index], todoList[currentTodo.Index+1:]...)
 
 		return c.JSON(
 			http.StatusOK,
