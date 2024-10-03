@@ -1,9 +1,16 @@
 package main
 
 import (
+	"database/sql"
+	"fmt"
+	"github.com/joho/godotenv"
 	"github.com/labstack/echo/v4"
+	"github.com/uptrace/bun"
+	"github.com/uptrace/bun/dialect/pgdialect"
+	"github.com/uptrace/bun/driver/pgdriver"
 	"math/rand"
 	"net/http"
+	"os"
 	"strconv"
 	"test-server/myapp/diff-utils"
 	"test-server/myapp/json-utils"
@@ -21,7 +28,23 @@ type ResponseMessage struct {
 }
 
 func main() {
+	err := godotenv.Load()
+	if err != nil {
+		fmt.Println("Error loading .env file")
+	}
 	var todoList []Todo
+	fmt.Println("postgres://" + os.Getenv("DATABASE_USER") + ":" + os.Getenv("DATABASE_PASSWORD") + "@" + os.Getenv("DATABASE_URL") + ":" + os.Getenv("DATABASE_PORT") + "/" + os.Getenv("DATABASE_NAME") + "?sslmode=disable")
+	dsn := "postgres://" + os.Getenv("DATABASE_USER") + ":" + os.Getenv("DATABASE_PASSWORD") + "@" + os.Getenv("DATABASE_URL") + ":" + os.Getenv("DATABASE_PORT") + "/" + os.Getenv("DATABASE_NAME") + "?sslmode=disable"
+	// dsn := "unix://user:pass@dbname/var/run/postgresql/.s.PGSQL.5432"
+	hsqldb := sql.OpenDB(pgdriver.NewConnector(pgdriver.WithDSN(dsn)))
+
+	db := bun.NewDB(hsqldb, pgdialect.New())
+
+	err = db.Ping()
+	if err != nil {
+		fmt.Println(err)
+	}
+
 	e := echo.New()
 	e.GET("/todos", func(c echo.Context) error {
 		return c.JSON(http.StatusOK, todoList)
