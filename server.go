@@ -3,17 +3,17 @@ package main
 import (
 	"database/sql"
 	"fmt"
-	"github.com/joho/godotenv"
-	"github.com/labstack/echo/v4"
-	"github.com/uptrace/bun"
-	"github.com/uptrace/bun/dialect/pgdialect"
-	"github.com/uptrace/bun/driver/pgdriver"
 	"math/rand"
 	"net/http"
 	"os"
 	"strconv"
-	"test-server/myapp/diff-utils"
-	"test-server/myapp/json-utils"
+	diff_utils "test-server/myapp/diff-utils"
+	json_utils "test-server/myapp/json-utils"
+
+	_ "github.com/lib/pq"
+
+	"github.com/joho/godotenv"
+	"github.com/labstack/echo/v4"
 )
 
 type Todo struct {
@@ -27,23 +27,44 @@ type ResponseMessage struct {
 	Status  string `json:"status"`
 }
 
+var db *sql.DB
+
+func dbConnect() {
+	var (
+		host     = os.Getenv("DATABASE_HOST")
+		port     = os.Getenv("DATABASE_PORT")
+		user     = os.Getenv("DATABASE_USER")
+		password = os.Getenv("DATABASE_PASSWORD")
+		dbname   = os.Getenv("DATABASE_NAME")
+	)
+
+	psqlInfo := fmt.Sprintf("host=%s port=%s user=%s "+
+		"password=%s dbname=%s sslmode=disable",
+		host, port, user, password, dbname)
+	fmt.Println(psqlInfo)
+	db, err := sql.Open("postgres", psqlInfo)
+	if err != nil {
+		panic(err)
+	}
+
+	err = db.Ping()
+	if err != nil {
+		fmt.Println(err)
+		panic(err)
+	}
+
+	fmt.Println("Database connected!")
+}
+
 func main() {
 	err := godotenv.Load()
 	if err != nil {
 		fmt.Println("Error loading .env file")
 	}
+
+	dbConnect()
+
 	var todoList []Todo
-	fmt.Println("postgres://" + os.Getenv("DATABASE_USER") + ":" + os.Getenv("DATABASE_PASSWORD") + "@" + os.Getenv("DATABASE_URL") + ":" + os.Getenv("DATABASE_PORT") + "/" + os.Getenv("DATABASE_NAME") + "?sslmode=disable")
-	dsn := "postgres://" + os.Getenv("DATABASE_USER") + ":" + os.Getenv("DATABASE_PASSWORD") + "@" + os.Getenv("DATABASE_URL") + ":" + os.Getenv("DATABASE_PORT") + "/" + os.Getenv("DATABASE_NAME") + "?sslmode=disable"
-	// dsn := "unix://user:pass@dbname/var/run/postgresql/.s.PGSQL.5432"
-	hsqldb := sql.OpenDB(pgdriver.NewConnector(pgdriver.WithDSN(dsn)))
-
-	db := bun.NewDB(hsqldb, pgdialect.New())
-
-	err = db.Ping()
-	if err != nil {
-		fmt.Println(err)
-	}
 
 	e := echo.New()
 	e.GET("/todos", func(c echo.Context) error {
