@@ -10,7 +10,10 @@ import (
 	diff_utils "test-server/myapp/diff-utils"
 	json_utils "test-server/myapp/json-utils"
 
+	"github.com/google/uuid"
 	_ "github.com/lib/pq"
+	"gorm.io/driver/postgres"
+	"gorm.io/gorm"
 
 	"github.com/joho/godotenv"
 	"github.com/labstack/echo/v4"
@@ -20,6 +23,13 @@ type Todo struct {
 	Id     int    `json:"id"`
 	Todo   string `json:"todo"`
 	Status string `json:"status"`
+}
+
+type TodoModel struct {
+	gorm.Model
+	ID     uuid.UUID `json:"id" gorm:"primaryKey;type:uuid;default:gen_random_uuid()"`
+	Todo   string    `json:"todo" gorm:"type:varchar(110);"`
+	Status string    `json:"status" gorm:"varchar(110);default:in_progress"`
 }
 
 type ResponseMessage struct {
@@ -41,19 +51,18 @@ func dbConnect() {
 	psqlInfo := fmt.Sprintf("host=%s port=%s user=%s "+
 		"password=%s dbname=%s sslmode=disable",
 		host, port, user, password, dbname)
-	fmt.Println(psqlInfo)
-	db, err := sql.Open("postgres", psqlInfo)
-	if err != nil {
-		panic(err)
-	}
 
-	err = db.Ping()
+	db, err := gorm.Open(postgres.Open(psqlInfo), &gorm.Config{})
 	if err != nil {
-		fmt.Println(err)
-		panic(err)
+		panic("failed to connect database")
 	}
 
 	fmt.Println("Database connected!")
+
+	err = db.AutoMigrate(&TodoModel{})
+	if err != nil {
+		panic(err)
+	}
 }
 
 func main() {
